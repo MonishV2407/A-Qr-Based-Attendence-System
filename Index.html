@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PR Attendance System — Teacher OnlyPr Portal</title>
+  <meta name="description" content="Proxy-Resistant Smart QR-Based Attendance System for Teacher OnlyPr. Rotating time-bound QR tokens, unique course upload, and live mobile scan roster." />
+  <link rel="icon" type="image/svg+xml" href="/Brand-Mark.svg" />
+  
+  <!-- Fonts: Cinzel (Copperplate Gothic Fallback) + Comic Neue (Cosmic/Comic Sans Fallback) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800;900&family=Comic+Neue:ital,wght@0,300;0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['"Copperplate Gothic Light"', '"Copperplate Gothic"', '"Copperplate"', '"Cinzel"', 'serif'],
+            sans: ['"Comic Sans MS"', '"Comic Sans"', '"Comic Neue"', '"Chalkboard SE"', 'cursive', 'sans-serif'],
+            body: ['"Comic Sans MS"', '"Comic Sans"', '"Comic Neue"', '"Chalkboard SE"', 'cursive', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            brand: {
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              dark: '#051918'
+            },
+            cyan: {
+              400: '#22d3ee',
+              500: '#06b6d4'
+            },
+            navy: {
+              800: '#0f172a',
+              900: '#090d16',
+              950: '#04070d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Content Font: Cosmic Sans / Comic Sans */
+    body, button, input, select, textarea {
+      font-family: 'Comic Sans MS', 'Comic Sans', 'Comic Neue', 'Chalkboard SE', cursive, sans-serif !important;
+      background-color: #06090e;
+      color: #e2e8f0;
+    }
+
+    /* Heading Font: CopperPlate Gothic Light */
+    h1, h2, h3, h4, h5, h6, .font-heading {
+      font-family: 'Copperplate Gothic Light', 'Copperplate Gothic', 'Copperplate', 'Cinzel', serif !important;
+      letter-spacing: 0.05em;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace !important;
+    }
+    
+    .glow-emerald {
+      box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
+    }
+    @keyframes qr-border-pulse {
+      0%, 100% { border-color: rgba(16, 185, 129, 0.85); box-shadow: 0 0 35px rgba(16, 185, 129, 0.3); }
+      50% { border-color: rgba(6, 182, 212, 0.85); box-shadow: 0 0 35px rgba(6, 182, 212, 0.35); }
+    }
+    .qr-animated-frame {
+      animation: qr-border-pulse 4s infinite ease-in-out;
+    }
+
+    @media print {
+      body { background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+  <!-- Header Bar -->
+  <header class="border-b border-slate-800/80 bg-navy-950/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Brand & Title -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('dashboard')">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-cyan-500 p-0.5 shadow-lg shadow-brand-500/20 flex items-center justify-center">
+            <img src="/Brand-Mark.svg" alt="PR Attendance" class="w-full h-full rounded-[10px]" />
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-heading font-extrabold text-lg tracking-wider bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+                PR Attendance System
+              </span>
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                OnlyPr
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-medium">Smart QR-Based Mobile Attendance • Instructor: OnlyPr</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs (Only visible when Teacher OnlyPr is logged in) -->
+        <nav class="hidden md:flex items-center space-x-1" id="nav-tabs">
+          <button onclick="navigateTo('dashboard')" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition" id="tab-dashboard">
+            <i data-lucide="projector" class="w-3.5 h-3.5"></i>
+            <span>Active QR & Roster</span>
+          </button>
+          <button onclick="navigateTo('courses')" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition" id="tab-courses">
+            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+            <span>Unique Courses & Timing</span>
+          </button>
+          <button onclick="navigateTo('security-lab')" class="nav-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 text-slate-400 hover:text-white hover:bg-slate-800 transition" id="tab-security-lab">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>Security Test Lab</span>
+          </button>
+        </nav>
+
+        <!-- Right Side: User Profile / Logout -->
+        <div class="flex items-center space-x-3">
+          <button onclick="openProjectModal()" title="Project Details" class="hidden sm:flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition">
+            <i data-lucide="info" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Project Info</span>
+          </button>
+
+          <div id="teacher-profile-pill" class="hidden flex items-center space-x-2.5 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+            <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
+              OP
+            </div>
+            <div class="text-left hidden sm:block">
+              <div class="font-bold text-white leading-tight font-heading">OnlyPr</div>
+              <div class="text-[10px] text-emerald-400 font-mono">Teacher Logged In</div>
+            </div>
+            <button onclick="handleTeacherLogout()" title="Sign Out" class="ml-2 text-rose-400 hover:text-rose-300 p-1 rounded hover:bg-rose-500/10 transition">
+              <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Main View Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- VIEW 1: TEACHER LOGIN PAGE -->
+    <div id="view-login" class="max-w-md mx-auto my-12">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-7 sm:p-9 shadow-2xl space-y-6">
+        <div class="text-center space-y-2">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-500 p-1 shadow-xl shadow-brand-500/25 flex items-center justify-center mb-3">
+            <img src="/Brand-Mark.svg" alt="PR Attendance" class="w-full h-full rounded-xl" />
+          </div>
+          <h2 class="font-heading text-2xl font-extrabold text-white">Teacher Login Portal</h2>
+          <p class="text-xs text-slate-400">Exclusive login for Teacher <strong class="text-emerald-400">OnlyPr</strong></p>
+        </div>
+
+        <form id="teacher-login-form" onsubmit="handleTeacherLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Teacher Username</label>
+            <div class="relative">
+              <input type="text" id="login-username" required value="OnlyPr" placeholder="Enter OnlyPr" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-semibold focus:outline-none focus:border-brand-500 transition" />
+              <div class="absolute right-3 top-3 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                OnlyPr
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
+            <input type="password" id="login-password" required value="12345" placeholder="Enter password (12345)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-500 transition" />
+          </div>
+
+          <button type="submit" class="w-full py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-brand-500 to-cyan-500 text-slate-950 hover:opacity-95 shadow-lg shadow-brand-500/25 transition flex items-center justify-center space-x-2">
+            <span>Sign In as OnlyPr</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </form>
+
+        <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+          <div class="font-bold text-slate-300 flex items-center space-x-1.5">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Teacher Credentials</span>
+          </div>
+          <div>• Teacher Username: <code class="text-emerald-400 font-bold">OnlyPr</code></div>
+          <div>• Password: <code class="text-cyan-400 font-bold">12345</code></div>
+          <div class="text-slate-500 text-[10px] pt-1">Note: Students do not log in here. Students simply scan the teacher's active session QR using their mobile camera!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: TEACHER DASHBOARD -->
+    <div id="view-dashboard" class="hidden space-y-6">
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-mono font-bold text-emerald-400 uppercase">Teacher OnlyPr Control Center</span>
+          </div>
+          <h1 class="font-heading text-2xl font-extrabold text-white mt-1">Smart QR Attendance Manager</h1>
+          <p class="text-xs text-slate-400">Project the live dynamic QR code on screen. Students scan with their mobile phones to check in.</p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button onclick="navigateTo('courses')" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center space-x-1.5">
+            <i data-lucide="book-open" class="w-4 h-4 text-cyan-400"></i>
+            <span>Courses & Timing</span>
+          </button>
+
+          <button onclick="openCreateSessionModal()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-cyan-500 text-slate-950 hover:opacity-95 text-xs font-bold shadow-lg shadow-brand-500/25 transition flex items-center space-x-2">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Create New QR Session</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="active-session-container"></div>
+
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-heading text-base font-bold text-white flex items-center space-x-2">
+              <i data-lucide="history" class="w-4 h-4 text-cyan-400"></i>
+              <span>Completed Attendance Sessions</span>
+            </h3>
+            <p class="text-xs text-slate-400">Previous class sessions and total students present</p>
+          </div>
+          <button onclick="loadDashboard()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950/60 uppercase font-mono text-[10px] text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="px-4 py-3">Session Code</th>
+                <th class="px-4 py-3">Course</th>
+                <th class="px-4 py-3">Class Group</th>
+                <th class="px-4 py-3">Room</th>
+                <th class="px-4 py-3">Duration</th>
+                <th class="px-4 py-3">Students Present</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="history-sessions-table" class="divide-y divide-slate-800/60 font-medium"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VIEW 3: UNIQUE COURSES & TIMING -->
+    <div id="view-courses" class="hidden space-y-6">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+        <div>
+          <h1 class="font-heading text-2xl font-extrabold text-white">Unique Course List & Timings</h1>
+          <p class="text-xs text-slate-400">Teacher <strong class="text-emerald-400">OnlyPr</strong> course catalog (unique names enforced) and weekly meeting timings</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="openUploadCoursesModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center space-x-1.5">
+            <i data-lucide="upload" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Upload Unique Courses</span>
+          </button>
+          <button onclick="openAddCourseModal()" class="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition flex items-center space-x-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Add Single Course</span>
+          </button>
+          <button onclick="openAddTimingModal()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition flex items-center space-x-1.5">
+            <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+            <span>Set Course Timing</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-heading text-base font-bold text-white flex items-center space-x-2">
+              <i data-lucide="book" class="w-4 h-4 text-emerald-400"></i>
+              <span>Registered Unique Courses</span>
+            </h2>
+            <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20" id="courses-count-badge">0 Unique Courses</span>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 flex items-center space-x-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+            <span>Unique Name Constraint Active: duplicate course names are automatically prevented.</span>
+          </div>
+
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1" id="courses-container"></div>
+        </div>
+
+        <div class="lg:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-heading text-base font-bold text-white flex items-center space-x-2">
+              <i data-lucide="clock" class="w-4 h-4 text-cyan-400"></i>
+              <span>Course Timings Schedule</span>
+            </h2>
+            <span class="text-xs font-mono text-slate-400" id="timings-count-badge">0 Slots</span>
+          </div>
+
+          <div class="space-y-2 max-h-96 overflow-y-auto pr-1" id="timings-container"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- VIEW 4: STUDENT MOBILE CHECK-IN SCREEN -->
+    <div id="view-student-attend" class="hidden max-w-lg mx-auto my-6 space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        
+        <div class="text-center space-y-2 pb-4 border-b border-slate-800">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-brand-500 to-cyan-500 p-1 shadow-lg shadow-brand-500/20 flex items-center justify-center mb-2">
+            <img src="/Brand-Mark.svg" alt="PR Attendance" class="w-full h-full rounded-xl" />
+          </div>
+          <span class="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+            STUDENT MOBILE CHECK-IN
+          </span>
+          <h2 class="font-heading text-2xl font-extrabold text-white" id="mobile-course-title">Loading Class...</h2>
+          <p class="text-xs text-slate-400" id="mobile-session-meta">Instructor: OnlyPr • Class Group • Room</p>
+        </div>
+
+        <form id="mobile-attend-form" onsubmit="handleMobileAttendSubmit(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Your Full Name</label>
+            <input type="text" id="mobile-student-name" required placeholder="e.g. Monish V." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-medium focus:outline-none focus:border-brand-500 transition" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Roll Number / Student ID</label>
+            <input type="text" id="mobile-student-roll" required placeholder="e.g. 24BDE0059" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-mono uppercase focus:outline-none focus:border-brand-500 transition" />
+          </div>
+
+          <input type="hidden" id="mobile-qr-token" value="" />
+
+          <button type="submit" id="btn-submit-mobile-attend" class="w-full py-3.5 rounded-xl font-bold text-sm bg-gradient-to-r from-brand-500 to-cyan-500 text-slate-950 hover:opacity-95 shadow-xl shadow-brand-500/25 transition flex items-center justify-center space-x-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span>Confirm My Attendance</span>
+          </button>
+        </form>
+
+        <div id="mobile-result-box" class="hidden p-4 rounded-xl border text-xs transition"></div>
+
+        <div class="pt-4 border-t border-slate-800 text-[11px] text-slate-400 space-y-2">
+          <div class="font-semibold text-slate-300">Quick Test Fill (Sample Students):</div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="fillMobileTest('Monish V.', '24BDE0059')" class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 font-mono transition">
+              Monish V. (24BDE0059)
+            </button>
+            <button onclick="fillMobileTest('Buvanesh Kumar A.', '24BDE0054')" class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 font-mono transition">
+              Buvanesh (24BDE0054)
+            </button>
+            <button onclick="fillMobileTest('Mukunth Suriya M.', '24BDE0074')" class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 font-mono transition">
+              Mukunth (24BDE0074)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 5: SECURITY TEST LAB -->
+    <div id="view-security-lab" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span class="text-[11px] font-mono text-cyan-400 font-bold uppercase">Methodology & Evaluation</span>
+          <h1 class="font-heading text-2xl font-extrabold text-white mt-1">Application Security Suite</h1>
+          <p class="text-xs text-slate-400">Verifies the 4 security tests from Slide 5: Valid Scans, Expired Tokens, Duplicate Attempts, and Forged Tokens.</p>
+        </div>
+        <button onclick="runSecurityTests()" id="btn-run-tests" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-cyan-500 text-slate-950 font-bold text-xs shadow-lg shadow-brand-500/25 transition flex items-center space-x-2">
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span>Run All 4 Security Tests</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5" id="security-test-cards"></div>
+    </div>
+
+  </main>
+
+  <!-- MODALS -->
+  <div id="modal-create-session" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-heading text-lg font-bold text-white flex items-center space-x-2">
+          <i data-lucide="plus-circle" class="w-5 h-5 text-brand-400"></i>
+          <span>Create Active QR Session</span>
+        </h3>
+        <button onclick="closeModal('modal-create-session')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleCreateSessionSubmit(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Select Unique Course</label>
+          <select id="create-session-course" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-brand-500"></select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1">Class Group / Section</label>
+            <input type="text" id="create-session-group" required value="BDE Batch 2026" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-300 mb-1">Room / Lab</label>
+            <input type="text" id="create-session-room" required value="Network Lab 402" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+          <div>
+            <label class="block font-semibold text-emerald-400 mb-1">Session Duration (Time Limit)</label>
+            <select id="create-session-duration" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500 font-semibold">
+              <option value="5">5 Minutes</option>
+              <option value="10">10 Minutes</option>
+              <option value="15" selected>15 Minutes</option>
+              <option value="30">30 Minutes</option>
+              <option value="45">45 Minutes</option>
+              <option value="60">60 Minutes (1 Hour)</option>
+              <option value="90">90 Minutes</option>
+              <option value="120">120 Minutes (2 Hours)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-cyan-400 mb-1">QR Rotation Frequency</label>
+            <select id="create-session-rotation" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500 font-semibold">
+              <option value="10">Every 10 Seconds</option>
+              <option value="15" selected>Every 15 Seconds (Optimal)</option>
+              <option value="30">Every 30 Seconds</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-brand-500 to-cyan-500 text-slate-950 hover:opacity-95 shadow-lg shadow-brand-500/25 transition text-sm">
+          Start Session & Project Dynamic QR
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-upload-courses" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-heading text-lg font-bold text-white flex items-center space-x-2">
+          <i data-lucide="upload" class="w-5 h-5 text-cyan-400"></i>
+          <span>Upload Unique Course List</span>
+        </h3>
+        <button onclick="closeModal('modal-upload-courses')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Upload or paste your course list. <strong>Course names must be unique</strong> (duplicates will be detected and skipped automatically):
+      </p>
+
+      <div class="space-y-3">
+        <label class="block p-4 rounded-xl border-2 border-dashed border-slate-800 hover:border-slate-700 bg-slate-950 cursor-pointer text-center transition">
+          <i data-lucide="file-up" class="w-6 h-6 text-slate-400 mx-auto mb-1"></i>
+          <span class="text-xs text-slate-300 font-medium">Click to choose CSV or text file</span>
+          <input type="file" accept=".csv,.txt,.json" onchange="handleCourseFileUpload(event)" class="hidden" />
+        </label>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Or Paste Course List (Course Name, Code, Dept):</label>
+          <textarea id="upload-courses-textarea" rows="6" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-brand-500" placeholder="Artificial Intelligence,BCSE305L,CSE&#10;Software Engineering,BCSE306P,CSE&#10;Cloud Architecture,BCSE312L,CSE"></textarea>
+        </div>
+
+        <button onclick="submitCourseListUpload()" class="w-full py-2.5 rounded-xl font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs transition">
+          Process & Add Unique Courses
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-add-course" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-heading text-lg font-bold text-white">Add Unique Course</h3>
+        <button onclick="closeModal('modal-add-course')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form onsubmit="handleAddCourseSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Unique Course Name</label>
+          <input type="text" id="add-course-name" required placeholder="e.g. Distributed Computing" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Course Code</label>
+          <input type="text" id="add-course-code" required placeholder="e.g. BCSE311L" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-brand-500" />
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Department</label>
+          <input type="text" id="add-course-dept" value="CSE" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-brand-500 text-slate-950 hover:bg-brand-400 transition mt-2">
+          Save Unique Course
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-add-timing" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-heading text-lg font-bold text-white">Set Course Timing</h3>
+        <button onclick="closeModal('modal-add-timing')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form onsubmit="handleAddTimingSubmit(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Select Course</label>
+          <select id="timing-course-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500"></select>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Day</label>
+            <select id="timing-day" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500">
+              <option value="Mon">Mon</option>
+              <option value="Tue">Tue</option>
+              <option value="Wed">Wed</option>
+              <option value="Thu">Thu</option>
+              <option value="Fri">Fri</option>
+              <option value="Sat">Sat</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Start Time</label>
+            <input type="text" id="timing-start" value="09:00" placeholder="09:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">End Time</label>
+            <input type="text" id="timing-end" value="10:30" placeholder="10:30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Class Group / Batch</label>
+          <input type="text" id="timing-group" value="BDE Batch 2026" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+        </div>
+        <div>
+          <label class="block font-medium text-slate-300 mb-1">Room / Lab</label>
+          <input type="text" id="timing-room" value="Network Lab 402" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-500" />
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl font-bold bg-cyan-500 text-slate-950 hover:bg-cyan-400 transition mt-2">
+          Save Timing Schedule
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-project-info" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-[10px] font-mono text-emerald-400 font-bold uppercase">Computer Network Project</span>
+          <h2 class="font-heading text-lg font-extrabold text-white">PR Attendance System</h2>
+        </div>
+        <button onclick="closeModal('modal-project-info')" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-300 space-y-3">
+        <p><strong>Instructor:</strong> OnlyPr (Password: 12345)</p>
+        <p><strong>Guided by:</strong> Prof. Aaseegha M D</p>
+        <p><strong>Presented by:</strong> Monish V. (24BDE0059), Buvanesh Kumar A. (24BDE0054), Mukunth Suriya M. (24BDE0074)</p>
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] space-y-1">
+          <div class="font-bold text-emerald-400">Features:</div>
+          <div>• Teacher: <strong>OnlyPr</strong> (Login: <strong>OnlyPr</strong> / <strong>12345</strong>).</div>
+          <div>• Course catalog with <strong>Unique Course Names</strong> enforced by DB constraints.</div>
+          <div>• Fonts: <strong>Copperplate Gothic Light</strong> headings & <strong>Cosmic / Comic Sans</strong> body content.</div>
+          <div>• Students scan projected QR using mobile camera without requiring an account.</div>
+        </div>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeModal('modal-project-info')" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Tone Synthesizer for Scan Chimes -->
+  <script>
+    function playChime(success = true) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        if (success) {
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.35);
+        } else {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+          osc.frequency.setValueAtTime(160, audioCtx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.4);
+        }
+      } catch (e) {}
+    }
+  </script>
+
+  <script src="/App.js"></script>
+</body>
+</html>

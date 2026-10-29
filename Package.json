@@ -1,0 +1,16 @@
+{
+  "name": "pr-attendance-system",
+  "version": "1.0.0",
+  "description": "Smart QR-Based Proxy-Resistant Attendance System for Teacher OnlyPr",
+  "main": "Server/Server.js",
+  "scripts": {
+    "start": "node Server/Server.js"
+  },
+  "keywords": [
+    "qr-attendance",
+    "smart-qr",
+    "teacher-onlypr"
+  ],
+  "author": "OnlyPr",
+  "license": "MIT"
+}
